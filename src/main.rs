@@ -1,3 +1,8 @@
+mod models;
+
+use sqlx::postgres::PgPoolOptions;
+use models::{User, NewUser};
+
 use axum::{
     routing::get,
     Router,
@@ -26,6 +31,12 @@ async fn main() {
     tracing::info!("Starting TrueLink backend on port {}", port);
     tracing::debug!("Database URL: {}", db_url);
 
+    // Test database connection
+    if let Err(e) = test_db_connection().await {
+        eprintln!("❌ Database connection failed: {}", e);
+        return;
+    }
+
     // Build application with routes
     let app = Router::new()
         .route("/", get(root))
@@ -42,6 +53,34 @@ async fn main() {
     )
         .await
         .unwrap();
+}
+
+//  Database test function
+async fn test_db_connection() -> Result<(), sqlx::Error> {
+    let database_url = std::env::var("DATABASE_URL")
+        .expect("DATABASE_URL must be set");
+
+    let pool = PgPoolOptions::new()
+        .max_connections(5)
+        .connect(&database_url)
+        .await?;
+
+    // Test by counting users (should be 0 initially)
+    let result: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM users")
+        .fetch_one(&pool)
+        .await?;
+
+    println!("✅ Database connection successful!");
+    println!("✅ Users in database: {}", result.0);
+
+    // Test if we can query user structure
+    let users: Vec<User> = sqlx::query_as("SELECT * FROM users LIMIT 5")
+        .fetch_all(&pool)
+        .await?;
+
+    println!("✅ User model works! Found {} users", users.len());
+
+    Ok(())
 }
 
 // Route handlers
