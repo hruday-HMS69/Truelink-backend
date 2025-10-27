@@ -18,7 +18,7 @@ use auth::service::AuthService;
 
 #[tokio::main]
 async fn main() {
-    // Initialize logging
+    
     tracing_subscriber::fmt::init();
     dotenv().ok();
 
