@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use sqlx::prelude::FromRow;
 use uuid::Uuid;
+use validator::Validate;
 
 #[derive(Debug, Serialize, Deserialize, FromRow)]
 pub struct User {
@@ -18,6 +19,30 @@ pub struct User {
 pub struct NewUser {
     pub email: String,
     pub full_name: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Validate)]
+pub struct CreateUserRequest {
+    #[validate(email(message = "Invalid email address"))]
+    pub email: String,
+
+    #[validate(length(min = 2, message = "Name must be at least 2 characters"))]
+    pub full_name: String,
+
+    #[validate(length(min = 8, message = "Password must be at least 8 characters"))]
+    pub password: String,
+}
+
+#[derive(Debug, Serialize, Deserialize
+pub struct LoginRequest {
+    pub email: String,
+    pub password: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AuthResponse {
+    pub token: String,
+    pub user: User,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
