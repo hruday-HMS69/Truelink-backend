@@ -33,12 +33,13 @@ pub struct CreateUserRequest {
     pub password: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Validate)]
 pub struct LoginRequest {
+    #[validate(email(message = "Invalid email address"))]
     pub email: String,
+
     pub password: String,
 }
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AuthResponse {
     pub token: String,
@@ -53,5 +54,4 @@ pub struct AuthMethod {
     pub provider_user_id: Option<String>,
     pub password_hash: Option<String>,
     pub created_at: chrono::DateTime<chrono::Utc>,
-
 }
