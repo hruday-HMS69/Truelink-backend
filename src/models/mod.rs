@@ -1,3 +1,0 @@
-pub mod user;
-
-pub use user::{User, NewUser, AuthMethod, CreateUserRequest, LoginRequest, AuthResponse};
