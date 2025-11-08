@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
 
-const AuthForm: React.FC = () => {
+interface AuthFormProps {
+  onLoginSuccess: (user: any) => void;
+}
+
+const AuthForm: React.FC<AuthFormProps> = ({ onLoginSuccess }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
@@ -14,29 +18,34 @@ const AuthForm: React.FC = () => {
     setLoading(true);
 
     try {
-      const url = isLogin 
-        ? 'http://localhost:8080/api/auth/login'
-        : 'http://localhost:8080/api/auth/register';
+      const url = 'http://localhost:8080/api/auth/' + (isLogin ? 'login' : 'register');
       
       const body = isLogin
         ? { email, password }
         : { email, full_name: fullName, password };
 
+      console.log('Making API request to:', url, 'with body:', body);
+
       const response = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify(body),
       });
       
+      const data = await response.json();
+      
       if (!response.ok) {
-        throw new Error(isLogin ? 'Login failed' : 'Registration failed');
+        throw new Error(data.message || (isLogin ? 'Login failed' : 'Registration failed'));
       }
       
-      const data = await response.json();
       localStorage.setItem('token', data.token);
-      window.location.reload(); // Refresh to show dashboard
+      onLoginSuccess(data.user);
+      
     } catch (err: any) {
       setError(err.message || 'An error occurred');
+      console.error('Auth error:', err);
     } finally {
       setLoading(false);
     }
@@ -161,13 +170,13 @@ const AuthForm: React.FC = () => {
             disabled={loading}
             style={{
               width: '100%',
-              backgroundColor: '#3b82f6',
+              backgroundColor: loading ? '#9ca3af' : '#3b82f6',
               color: 'white',
               padding: '0.75rem',
               border: 'none',
               borderRadius: '0.375rem',
               fontSize: '1rem',
-              cursor: 'pointer'
+              cursor: loading ? 'not-allowed' : 'pointer'
             }}
           >
             {loading ? 'Loading...' : (isLogin ? 'Sign in' : 'Sign up')}
