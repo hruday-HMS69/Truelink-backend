@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
+import ProfileEditor from './ProfileEditor';
 
-// Define User interface locally instead of importing
 interface User {
   id: string;
   email: string;
@@ -14,6 +14,8 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ user }) => {
+  const [showProfileEditor, setShowProfileEditor] = useState(false);
+
   return (
     <div style={{ 
       padding: '2rem', 
@@ -22,7 +24,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
       background: '#f8fafc',
       minHeight: 'calc(100vh - 80px)'
     }}>
-      {/* Welcome Section */}
       <div style={{
         background: 'white',
         padding: '2rem',
@@ -42,14 +43,47 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
         </p>
       </div>
 
-      {/* Stats Cards */}
+      <div style={{
+        background: 'white',
+        padding: '1.5rem',
+        borderRadius: '8px',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+        marginBottom: '2rem',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+      }}>
+        <div>
+          <h3 style={{ margin: '0 0 0.5rem 0', color: '#374151' }}>Complete Your Profile</h3>
+          <p style={{ color: '#6b7280', margin: 0 }}>Add professional information to improve your profile strength</p>
+        </div>
+        <button 
+          onClick={() => setShowProfileEditor(!showProfileEditor)}
+          style={{
+            background: showProfileEditor ? '#6b7280' : '#2563eb',
+            color: 'white',
+            border: 'none',
+            padding: '0.75rem 1.5rem',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            fontSize: '1rem'
+          }}
+        >
+          {showProfileEditor ? 'Cancel Editing' : '✏️ Edit Profile'}
+        </button>
+      </div>
+
+      
+      {showProfileEditor && <ProfileEditor />}
+
+      
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
         gap: '1.5rem',
         marginBottom: '2rem'
       }}>
-        {/* Profile Completion Card */}
+        
         <div style={{
           background: 'white',
           padding: '1.5rem',
@@ -74,7 +108,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
           <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>30% complete</p>
         </div>
 
-        {/* Network Card */}
+        
         <div style={{
           background: 'white',
           padding: '1.5rem',
@@ -87,7 +121,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
           <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>connections</p>
         </div>
 
-        {/* Verification Card */}
+        
         <div style={{
           background: 'white',
           padding: '1.5rem',
@@ -103,7 +137,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
         </div>
       </div>
 
-      {/* Quick Actions */}
       <div style={{
         background: 'white',
         padding: '2rem',
@@ -113,15 +146,18 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
       }}>
         <h2 style={{ margin: '0 0 1.5rem 0', color: '#374151' }}>Quick Actions</h2>
         <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-          <button style={{
-            background: '#2563eb',
-            color: 'white',
-            border: 'none',
-            padding: '12px 24px',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            fontSize: '1rem'
-          }}>
+          <button 
+            onClick={() => setShowProfileEditor(true)}
+            style={{
+              background: '#2563eb',
+              color: 'white',
+              border: 'none',
+              padding: '12px 24px',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '1rem'
+            }}
+          >
             ✏️ Complete Profile
           </button>
           <button style={{
@@ -149,7 +185,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
         </div>
       </div>
 
-      {/* Recent Activity */}
       <div style={{
         background: 'white',
         padding: '2rem',
