@@ -1,13 +1,85 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
-const ProfileEditor: React.FC = () => {
+interface ProfileData {
+  headline?: string;
+  summary?: string;
+  location?: string;
+  website?: string;
+}
+
+interface ProfileEditorProps {
+  onSave?: () => void;
+}
+
+const ProfileEditor: React.FC<ProfileEditorProps> = ({ onSave }) => {
   const [headline, setHeadline] = useState('');
   const [summary, setSummary] = useState('');
   const [location, setLocation] = useState('');
-  
+  const [website, setWebsite] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const response = await fetch('http://localhost:8080/api/profile/me');
+        if (response.ok) {
+          const profileData: ProfileData = await response.json();
+          setHeadline(profileData.headline || '');
+          setSummary(profileData.summary || '');
+          setLocation(profileData.location || '');
+          setWebsite(profileData.website || '');
+        }
+      } catch (err) {
+        console.log('No existing profile data or failed to load');
+      }
+    };
+
+    loadProfile();
+  }, []);
+
   const handleSave = async () => {
-    // TODO: Connect to backend API
-    alert('Profile saved! (Backend integration needed)');
+    setLoading(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const token = localStorage.getItem('token');
+      const profileData = {
+        headline: headline || null,
+        summary: summary || null,
+        location: location || null,
+        website: website || null,
+      };
+
+      const response = await fetch('http://localhost:8080/api/profile/me', {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : '',
+        },
+        body: JSON.stringify(profileData),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save profile');
+      }
+
+      const result = await response.json();
+      setSuccess('Profile saved successfully!');
+
+       if (onSave) {
+        onSave();
+      }
+
+setTimeout(() => setSuccess(''), 3000);
+
+    } catch (err: any) {
+      setError(err.message || 'Failed to save profile');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -18,7 +90,33 @@ const ProfileEditor: React.FC = () => {
       boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
       marginBottom: '2rem'
     }}>
-      <h2 style={{ marginBottom: '1.5rem', color: '#374151' }}>Edit Your Profile</h2>
+      <h2 style={{ marginBottom: '1.5rem', color: '#374151' }}>Edit Your Professional Profile</h2>
+      
+      {error && (
+        <div style={{
+          backgroundColor: '#fef2f2',
+          border: '1px solid #fecaca',
+          color: '#dc2626',
+          padding: '0.75rem',
+          borderRadius: '6px',
+          marginBottom: '1rem'
+        }}>
+          {error}
+        </div>
+      )}
+
+      {success && (
+        <div style={{
+          backgroundColor: '#f0fdf4',
+          border: '1px solid #bbf7d0',
+          color: '#166534',
+          padding: '0.75rem',
+          borderRadius: '6px',
+          marginBottom: '1rem'
+        }}>
+          {success}
+        </div>
+      )}
       
       <div style={{ marginBottom: '1rem' }}>
         <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
@@ -44,7 +142,7 @@ const ProfileEditor: React.FC = () => {
           Professional Summary
         </label>
         <textarea
-          placeholder="Tell us about your professional background..."
+          placeholder="Tell us about your professional background, skills, and experience..."
           value={summary}
           onChange={(e) => setSummary(e.target.value)}
           rows={4}
@@ -59,7 +157,7 @@ const ProfileEditor: React.FC = () => {
         />
       </div>
 
-      <div style={{ marginBottom: '1.5rem' }}>
+      <div style={{ marginBottom: '1rem' }}>
         <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
           Location
         </label>
@@ -78,19 +176,40 @@ const ProfileEditor: React.FC = () => {
         />
       </div>
 
+      <div style={{ marginBottom: '1.5rem' }}>
+        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
+          Website
+        </label>
+        <input
+          type="url"
+          placeholder="https://yourwebsite.com"
+          value={website}
+          onChange={(e) => setWebsite(e.target.value)}
+          style={{
+            width: '100%',
+            padding: '0.75rem',
+            border: '1px solid #d1d5db',
+            borderRadius: '6px',
+            fontSize: '1rem'
+          }}
+        />
+      </div>
+
       <button
         onClick={handleSave}
+        disabled={loading}
         style={{
-          background: '#2563eb',
+          background: loading ? '#9ca3af' : '#2563eb',
           color: 'white',
           border: 'none',
           padding: '0.75rem 1.5rem',
           borderRadius: '6px',
-          cursor: 'pointer',
-          fontSize: '1rem'
+          cursor: loading ? 'not-allowed' : 'pointer',
+          fontSize: '1rem',
+          marginRight: '1rem'
         }}
       >
-        Save Profile
+        {loading ? 'Saving...' : 'Save Profile'}
       </button>
     </div>
   );

@@ -1,45 +1,21 @@
 use axum::{
     extract::State,
     http::StatusCode,
-    response::Json,
-    routing::post,
-    Router,
+    response::IntoResponse,
+    Json,
 };
-use sqlx::PgPool;
 use validator::Validate;
-use serde::Deserialize;
 
 use crate::{
-    auth::service::AuthService,
     models::{CreateUserRequest, User, AuthResponse},
+    auth::service::AuthService,
 };
+use crate::routes::AppState;
 
-#[derive(Clone)]
-pub struct AppState {
-    pub pool: PgPool,
-    pub auth_service: AuthService,
-}
-
-
-#[derive(Debug, Deserialize, Validate)]
-pub struct LoginRequest {
-    #[validate(email(message = "Invalid email format"))]
-    pub email: String,
-
-    #[validate(length(min = 6, message = "Password must be at least 6 characters long"))]
-    pub password: String,
-}
-
-pub fn auth_routes() -> Router<AppState> {
-    Router::new()
-        .route("/register", post(register))
-        .route("/login", post(login))
-}
-
-async fn register(
+pub async fn register(
     State(state): State<AppState>,
     Json(payload): Json<CreateUserRequest>,
-) -> Result<Json<AuthResponse>, (StatusCode, String)> {
+) -> impl IntoResponse {
     if let Err(validation_errors) = payload.validate() {
         return Err((StatusCode::BAD_REQUEST, format!("Validation failed: {:?}", validation_errors)));
     }
@@ -90,7 +66,6 @@ async fn register(
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-
     let token = state.auth_service
         .generate_token(user.id, &user.email)
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
@@ -98,15 +73,13 @@ async fn register(
     Ok(Json(AuthResponse { token, user }))
 }
 
-async fn login(
+pub async fn login(
     State(state): State<AppState>,
-    Json(payload): Json<LoginRequest>,
-) -> Result<Json<AuthResponse>, (StatusCode, String)> {
-
+    Json(payload): Json<crate::models::LoginRequest>,
+) -> impl IntoResponse {
     if let Err(validation_errors) = payload.validate() {
         return Err((StatusCode::BAD_REQUEST, format!("Validation failed: {:?}", validation_errors)));
     }
-
 
     let user: Option<User> = sqlx::query_as("SELECT * FROM users WHERE email = $1")
         .bind(&payload.email)
@@ -115,7 +88,6 @@ async fn login(
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     let user = user.ok_or((StatusCode::UNAUTHORIZED, "Invalid email or password".to_string()))?;
-
 
     let auth_method: Option<(String,)> = sqlx::query_as(
         "SELECT password_hash FROM auth_methods WHERE user_id = $1 AND provider = 'email'"
@@ -127,7 +99,6 @@ async fn login(
 
     let (password_hash,) = auth_method
         .ok_or((StatusCode::UNAUTHORIZED, "Invalid email or password".to_string()))?;
-
 
     let is_valid = state.auth_service
         .verify_password(&payload.password, &password_hash)
