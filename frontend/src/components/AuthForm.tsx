@@ -40,6 +40,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ onLoginSuccess }) => {
         throw new Error(data.message || (isLogin ? 'Login failed' : 'Registration failed'));
       }
       
+      
       localStorage.setItem('token', data.token);
       onLoginSuccess(data.user);
       
@@ -114,7 +115,12 @@ const AuthForm: React.FC<AuthFormProps> = ({ onLoginSuccess }) => {
           
           {!isLogin && (
             <div style={{ marginBottom: '1rem' }}>
+              <label htmlFor="fullName" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
+                Full Name
+              </label>
               <input
+                id="fullName"
+                name="fullName"
                 type="text"
                 required
                 style={{
@@ -132,7 +138,12 @@ const AuthForm: React.FC<AuthFormProps> = ({ onLoginSuccess }) => {
           )}
           
           <div style={{ marginBottom: '1rem' }}>
+            <label htmlFor="email" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
+              Email Address
+            </label>
             <input
+              id="email"
+              name="email"
               type="email"
               required
               style={{
@@ -149,7 +160,12 @@ const AuthForm: React.FC<AuthFormProps> = ({ onLoginSuccess }) => {
           </div>
           
           <div style={{ marginBottom: '1.5rem' }}>
+            <label htmlFor="password" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
+              Password
+            </label>
             <input
+              id="password"
+              name="password"
               type="password"
               required
               style={{

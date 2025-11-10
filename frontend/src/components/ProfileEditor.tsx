@@ -20,11 +20,13 @@ const ProfileEditor: React.FC<ProfileEditorProps> = ({ onSave }) => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-useEffect(() => {
+  useEffect(() => {
+    let mounted = true;
+    
     const loadProfile = async () => {
       try {
         const response = await fetch('http://localhost:8080/api/profile/me');
-        if (response.ok) {
+        if (response.ok && mounted) {
           const profileData: ProfileData = await response.json();
           setHeadline(profileData.headline || '');
           setSummary(profileData.summary || '');
@@ -32,11 +34,17 @@ useEffect(() => {
           setWebsite(profileData.website || '');
         }
       } catch (err) {
-        console.log('No existing profile data or failed to load');
+        if (mounted) {
+          console.log('No existing profile data or failed to load');
+        }
       }
     };
 
     loadProfile();
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const handleSave = async () => {
@@ -45,7 +53,6 @@ useEffect(() => {
     setSuccess('');
 
     try {
-      const token = localStorage.getItem('token');
       const profileData = {
         headline: headline || null,
         summary: summary || null,
@@ -57,23 +64,22 @@ useEffect(() => {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',
-          'Authorization': token ? `Bearer ${token}` : '',
         },
         body: JSON.stringify(profileData),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to save profile');
+        throw new Error(`Failed to save profile: ${response.status}`);
       }
 
-      const result = await response.json();
+      await response.json();
       setSuccess('Profile saved successfully!');
-
-       if (onSave) {
-        onSave();
+      
+      if (onSave) {
+        setTimeout(onSave, 100);
       }
 
-setTimeout(() => setSuccess(''), 3000);
+      setTimeout(() => setSuccess(''), 3000);
 
     } catch (err: any) {
       setError(err.message || 'Failed to save profile');
@@ -114,15 +120,17 @@ setTimeout(() => setSuccess(''), 3000);
           borderRadius: '6px',
           marginBottom: '1rem'
         }}>
-          {success}
+          ✅ {success}
         </div>
       )}
       
       <div style={{ marginBottom: '1rem' }}>
-        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
+        <label htmlFor="headline" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
           Professional Headline
         </label>
         <input
+          id="headline"
+          name="headline"
           type="text"
           placeholder="e.g. Senior Software Engineer at Google"
           value={headline}
@@ -138,10 +146,12 @@ setTimeout(() => setSuccess(''), 3000);
       </div>
 
       <div style={{ marginBottom: '1rem' }}>
-        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
+        <label htmlFor="summary" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
           Professional Summary
         </label>
         <textarea
+          id="summary"
+          name="summary"
           placeholder="Tell us about your professional background, skills, and experience..."
           value={summary}
           onChange={(e) => setSummary(e.target.value)}
@@ -158,10 +168,12 @@ setTimeout(() => setSuccess(''), 3000);
       </div>
 
       <div style={{ marginBottom: '1rem' }}>
-        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
+        <label htmlFor="location" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
           Location
         </label>
         <input
+          id="location"
+          name="location"
           type="text"
           placeholder="e.g. San Francisco, CA"
           value={location}
@@ -177,10 +189,12 @@ setTimeout(() => setSuccess(''), 3000);
       </div>
 
       <div style={{ marginBottom: '1.5rem' }}>
-        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
+        <label htmlFor="website" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
           Website
         </label>
         <input
+          id="website"
+          name="website"
           type="url"
           placeholder="https://yourwebsite.com"
           value={website}
@@ -205,8 +219,7 @@ setTimeout(() => setSuccess(''), 3000);
           padding: '0.75rem 1.5rem',
           borderRadius: '6px',
           cursor: loading ? 'not-allowed' : 'pointer',
-          fontSize: '1rem',
-          marginRight: '1rem'
+          fontSize: '1rem'
         }}
       >
         {loading ? 'Saving...' : 'Save Profile'}

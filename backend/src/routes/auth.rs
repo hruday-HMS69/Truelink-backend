@@ -8,7 +8,7 @@ use validator::Validate;
 
 use crate::{
     models::{CreateUserRequest, User, AuthResponse},
-    auth::service::AuthService,
+    
 };
 use crate::routes::AppState;
 
