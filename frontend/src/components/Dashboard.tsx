@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import ProfileEditor from './ProfileEditor';
+import UserSearch from './UserSearch';
 
 interface User {
   id: string;
@@ -15,6 +16,7 @@ interface DashboardProps {
 
 const Dashboard: React.FC<DashboardProps> = ({ user }) => {
   const [showProfileEditor, setShowProfileEditor] = useState(false);
+  const [showUserSearch, setShowUserSearch] = useState(false);
 
   return (
     <div style={{ 
@@ -24,6 +26,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
       background: '#f8fafc',
       minHeight: 'calc(100vh - 80px)'
     }}>
+      {/* Welcome Section */}
       <div style={{
         background: 'white',
         padding: '2rem',
@@ -43,6 +46,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
         </p>
       </div>
 
+      {/* Profile Completion Prompt */}
       <div style={{
         background: 'white',
         padding: '1.5rem',
@@ -55,7 +59,9 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
       }}>
         <div>
           <h3 style={{ margin: '0 0 0.5rem 0', color: '#374151' }}>Complete Your Profile</h3>
-          <p style={{ color: '#6b7280', margin: 0 }}>Add professional information to improve your profile strength</p>
+          <p style={{ color: '#6b7280', margin: 0 }}>
+            Add professional information to improve your profile strength
+          </p>
         </div>
         <button 
           onClick={() => setShowProfileEditor(!showProfileEditor)}
@@ -73,17 +79,20 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
         </button>
       </div>
 
-      
+      {/* Profile Editor */}
       {showProfileEditor && <ProfileEditor />}
 
-      
+      {/* User Search */}
+      {showUserSearch && <UserSearch />}
+
+      {/* Stats Cards */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
         gap: '1.5rem',
         marginBottom: '2rem'
       }}>
-        
+        {/* Profile Strength */}
         <div style={{
           background: 'white',
           padding: '1.5rem',
@@ -108,7 +117,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
           <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>30% complete</p>
         </div>
 
-        
+        {/* Network */}
         <div style={{
           background: 'white',
           padding: '1.5rem',
@@ -121,7 +130,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
           <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>connections</p>
         </div>
 
-        
+        {/* Verification */}
         <div style={{
           background: 'white',
           padding: '1.5rem',
@@ -137,6 +146,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
         </div>
       </div>
 
+      {/* Quick Actions */}
       <div style={{
         background: 'white',
         padding: '2rem',
@@ -147,9 +157,9 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
         <h2 style={{ margin: '0 0 1.5rem 0', color: '#374151' }}>Quick Actions</h2>
         <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
           <button 
-            onClick={() => setShowProfileEditor(true)}
+            onClick={() => setShowProfileEditor(!showProfileEditor)}
             style={{
-              background: '#2563eb',
+              background: showProfileEditor ? '#6b7280' : '#2563eb',
               color: 'white',
               border: 'none',
               padding: '12px 24px',
@@ -158,18 +168,21 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
               fontSize: '1rem'
             }}
           >
-            ✏️ Complete Profile
+            {showProfileEditor ? 'Cancel Editing' : '✏️ Complete Profile'}
           </button>
-          <button style={{
-            background: '#10b981',
-            color: 'white',
-            border: 'none',
-            padding: '12px 24px',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            fontSize: '1rem'
-          }}>
-            🔍 Find Connections
+          <button 
+            onClick={() => setShowUserSearch(!showUserSearch)}
+            style={{
+              background: showUserSearch ? '#6b7280' : '#10b981',
+              color: 'white',
+              border: 'none',
+              padding: '12px 24px',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '1rem'
+            }}
+          >
+            {showUserSearch ? 'Hide Search' : '🔍 Find Connections'}
           </button>
           <button style={{
             background: '#8b5cf6',
@@ -185,6 +198,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
         </div>
       </div>
 
+      {/* Recent Activity */}
       <div style={{
         background: 'white',
         padding: '2rem',

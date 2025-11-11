@@ -1,8 +1,9 @@
 pub mod auth;
 pub mod profile;
+pub mod connections;
 
 use axum::{
-    routing::{get, post, put},
+    routing::{get, post, put, delete},
     Router,
 };
 use sqlx::PgPool;
@@ -21,6 +22,7 @@ pub fn create_routes(state: AppState) -> Router {
         .route("/api/status", get(api_status))
         .nest("/api/auth", auth_routes())
         .nest("/api/profile", profile_routes())
+        .nest("/api/connections", connection_routes())
         .with_state(state)
         .layer(
             tower_http::cors::CorsLayer::new()
@@ -56,4 +58,13 @@ fn profile_routes() -> Router<AppState> {
     Router::new()
         .route("/me", get(profile::get_user_profile))
         .route("/me", put(profile::update_user_profile))
+}
+
+fn connection_routes() -> Router<AppState> {
+    Router::new()
+        .route("/search", get(connections::search_users))
+        .route("/request", post(connections::send_connection_request))
+        .route("/requests", get(connections::get_pending_requests))
+        .route("/requests/:id", put(connections::update_connection_request))
+        .route("/", get(connections::get_connections))
 }
