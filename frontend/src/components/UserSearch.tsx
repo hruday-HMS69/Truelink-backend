@@ -13,6 +13,8 @@ const UserSearch: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const currentUserId = "a390378b-51af-4dc7-aeb4-566f2ee429ef";
+
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchTerm.trim()) return;
@@ -22,13 +24,13 @@ const UserSearch: React.FC = () => {
 
     try {
       const response = await fetch(`http://localhost:8080/api/connections/search?q=${encodeURIComponent(searchTerm)}`);
-      
       if (!response.ok) {
         throw new Error('Search failed');
       }
 
       const data = await response.json();
-      setSearchResults(data.users || []);
+      const filteredUsers = (data.users || []).filter((user: User) => user.id !== currentUserId);
+      setSearchResults(filteredUsers);
     } catch (err: any) {
       setError(err.message || 'Search failed');
       setSearchResults([]);
@@ -38,6 +40,11 @@ const UserSearch: React.FC = () => {
   };
 
   const handleConnect = async (userId: string) => {
+    if (userId === currentUserId) {
+      alert("You cannot connect with yourself!");
+      return;
+    }
+
     try {
       const response = await fetch('http://localhost:8080/api/connections/request', {
         method: 'POST',
@@ -50,14 +57,13 @@ const UserSearch: React.FC = () => {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to send connection request');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to send connection request');
       }
 
       const result = await response.json();
-      alert(`Connection request sent to user!`);
-      
+      alert(`Connection request sent to ${searchResults.find(u => u.id === userId)?.full_name}!`);
       setSearchResults(prev => prev.filter(user => user.id !== userId));
-      
     } catch (err: any) {
       alert(err.message || 'Failed to send connection request');
     }
@@ -171,7 +177,7 @@ const UserSearch: React.FC = () => {
           </div>
         ) : searchTerm && !loading && (
           <p style={{ color: '#6b7280', textAlign: 'center' }}>
-            No professionals found. Try a different search term.
+            No other professionals found. Try a different search term.
           </p>
         )}
       </div>

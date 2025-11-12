@@ -8,7 +8,7 @@ use serde::Deserialize;
 use uuid::Uuid;
 
 use crate::routes::AppState;
-use crate::models::{ConnectionRequest, UpdateConnectionRequest, ConnectionWithUser, ConnectionStatus};
+use crate::models::{ConnectionRequest, UpdateConnectionRequest};
 
 #[derive(Debug, Deserialize)]
 pub struct SearchQuery {
@@ -20,115 +20,253 @@ pub async fn search_users(
     Query(query): Query<SearchQuery>,
 ) -> impl IntoResponse {
     let search_term = query.q.unwrap_or_default();
-    
+
     if search_term.is_empty() {
         return (StatusCode::BAD_REQUEST, Json(serde_json::json!({
             "error": "Search query is required"
         })));
     }
 
-    
-    let mock_users = vec![
+    let users = match sqlx::query!(
+        r#"
+        SELECT id, email, full_name, profile_picture_url
+        FROM users
+        WHERE full_name ILIKE $1 OR email ILIKE $1
+        ORDER BY full_name
+        LIMIT 10
+        "#,
+        format!("%{}%", search_term)
+    )
+        .fetch_all(&state.pool)
+        .await {
+        Ok(users) => users,
+        Err(e) => {
+            eprintln!("Database search error: {}", e);
+            return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({
+                "error": "Failed to search users"
+            })));
+        }
+    };
+
+    let user_results: Vec<serde_json::Value> = users.into_iter().map(|user| {
         serde_json::json!({
-            "id": "11111111-1111-1111-1111-111111111111",
-            "email": "alice@example.com",
-            "full_name": "Alice Johnson",
-            "headline": "Software Engineer at Tech Corp"
-        }),
-        serde_json::json!({
-            "id": "22222222-2222-2222-2222-222222222222", 
-            "email": "bob@example.com",
-            "full_name": "Bob Smith",
-            "headline": "Product Manager at Startup Inc"
+            "id": user.id,
+            "email": user.email,
+            "full_name": user.full_name,
+            "profile_picture_url": user.profile_picture_url,
+            "headline": "Professional"
         })
-    ];
+    }).collect();
 
     (StatusCode::OK, Json(serde_json::json!({
-        "users": mock_users,
-        "count": mock_users.len()
+        "users": user_results,
+        "count": user_results.len()
     })))
 }
-
 
 pub async fn send_connection_request(
     State(state): State<AppState>,
     Json(payload): Json<ConnectionRequest>,
 ) -> impl IntoResponse {
-    
-    let current_user_id = Uuid::parse_str("11111111-1111-1111-1111-111111111111").unwrap();
-    
-    println!("User {} wants to connect with {}", current_user_id, payload.receiver_id);
-    
-    
-    (StatusCode::OK, Json(serde_json::json!({
-        "message": "Connection request sent",
-        "connection": {
-            "sender_id": current_user_id,
-            "receiver_id": payload.receiver_id,
-            "status": "pending"
-        }
-    })))
-}
+    let current_user_id = Uuid::parse_str("a390378b-51af-4dc7-aeb4-566f2ee429ef").unwrap();
 
+    println!("User {} wants to connect with {}", current_user_id, payload.receiver_id);
+
+    if current_user_id == payload.receiver_id {
+        return (StatusCode::BAD_REQUEST, Json(serde_json::json!({
+            "error": "Cannot connect to yourself"
+        })));
+    }
+
+    let receiver_exists = match sqlx::query!(
+        "SELECT id FROM users WHERE id = $1",
+        payload.receiver_id
+    )
+        .fetch_optional(&state.pool)
+        .await {
+        Ok(Some(_)) => true,
+        Ok(None) => {
+            return (StatusCode::NOT_FOUND, Json(serde_json::json!({
+                "error": "User not found"
+            })));
+        },
+        Err(e) => {
+            eprintln!("Database error checking user: {}", e);
+            return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({
+                "error": "Database error"
+            })));
+        }
+    };
+
+    if !receiver_exists {
+        return (StatusCode::NOT_FOUND, Json(serde_json::json!({
+            "error": "Receiver not found"
+        })));
+    }
+
+    match sqlx::query!(
+        r#"
+        INSERT INTO connections (sender_id, receiver_id, status)
+        VALUES ($1, $2, 'pending')
+        ON CONFLICT (sender_id, receiver_id) DO NOTHING
+        RETURNING id
+        "#,
+        current_user_id,
+        payload.receiver_id
+    )
+        .fetch_optional(&state.pool)
+        .await {
+        Ok(Some(connection)) => {
+            println!("✅ Connection request created: {}", connection.id);
+            (StatusCode::OK, Json(serde_json::json!({
+                "message": "Connection request sent",
+                "connection_id": connection.id,
+                "status": "pending"
+            })))
+        },
+        Ok(None) => {
+            (StatusCode::CONFLICT, Json(serde_json::json!({
+                "error": "Connection request already exists"
+            })))
+        },
+        Err(e) => {
+            eprintln!("Database insert error: {}", e);
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({
+                "error": format!("Failed to send connection request: {}", e)
+            })))
+        }
+    }
+}
 
 pub async fn get_pending_requests(
     State(state): State<AppState>,
 ) -> impl IntoResponse {
-    
     let current_user_id = Uuid::parse_str("11111111-1111-1111-1111-111111111111").unwrap();
-    
-    
-    let mock_requests = vec![
+
+    let requests = match sqlx::query!(
+        r#"
+        SELECT c.id, c.sender_id, u.full_name as sender_name, u.email as sender_email, c.created_at
+        FROM connections c
+        JOIN users u ON c.sender_id = u.id
+        WHERE c.receiver_id = $1 AND c.status = 'pending'
+        ORDER BY c.created_at DESC
+        "#,
+        current_user_id
+    )
+        .fetch_all(&state.pool)
+        .await {
+        Ok(requests) => requests,
+        Err(e) => {
+            eprintln!("Database error fetching pending requests: {}", e);
+            return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({
+                "error": "Failed to fetch connection requests"
+            })));
+        }
+    };
+
+    let request_results: Vec<serde_json::Value> = requests.into_iter().map(|req| {
         serde_json::json!({
-            "id": "33333333-3333-3333-3333-333333333333",
-            "sender_id": "44444444-4444-4444-4444-444444444444",
-            "sender_name": "Charlie Brown",
-            "sender_headline": "Senior Developer",
-            "created_at": "2024-01-15T10:30:00Z"
+            "id": req.id,
+            "sender_id": req.sender_id,
+            "sender_name": req.sender_name,
+            "sender_email": req.sender_email,
+            "created_at": req.created_at
         })
-    ];
+    }).collect();
 
     (StatusCode::OK, Json(serde_json::json!({
-        "requests": mock_requests
+        "requests": request_results
     })))
 }
-
 
 pub async fn update_connection_request(
     State(state): State<AppState>,
     Path(connection_id): Path<Uuid>,
     Json(payload): Json<UpdateConnectionRequest>,
 ) -> impl IntoResponse {
-    println!("Updating connection {} to status: {:?}", connection_id, payload.status);
-    
-    
-    
-    (StatusCode::OK, Json(serde_json::json!({
-        "message": format!("Connection request {}", payload.status),
-        "connection_id": connection_id,
-        "status": payload.status
-    })))
-}
+    println!("Updating connection {} to status {:?}", connection_id, payload.status);
 
+    match sqlx::query!(
+        r#"
+        UPDATE connections
+        SET status = $1, updated_at = NOW()
+        WHERE id = $2
+        RETURNING id
+        "#,
+        payload.status.to_string(),
+        connection_id
+    )
+        .fetch_optional(&state.pool)
+        .await {
+        Ok(Some(_)) => {
+            (StatusCode::OK, Json(serde_json::json!({
+                "message": format!("Connection request {}", payload.status),
+                "connection_id": connection_id,
+                "status": payload.status
+            })))
+        },
+        Ok(None) => {
+            (StatusCode::NOT_FOUND, Json(serde_json::json!({
+                "error": "Connection request not found"
+            })))
+        },
+        Err(e) => {
+            eprintln!("Database error updating request: {}", e);
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({
+                "error": "Failed to update connection request"
+            })))
+        }
+    }
+}
 
 pub async fn get_connections(
     State(state): State<AppState>,
 ) -> impl IntoResponse {
-   
     let current_user_id = Uuid::parse_str("11111111-1111-1111-1111-111111111111").unwrap();
-    
-        let mock_connections = vec![
+
+    let connections = match sqlx::query!(
+        r#"
+        SELECT
+            c.id as connection_id,
+            u.id as user_id,
+            u.full_name,
+            u.email,
+            u.profile_picture_url,
+            c.created_at as connected_at
+        FROM connections c
+        JOIN users u ON (
+            (c.sender_id = $1 AND c.receiver_id = u.id)
+            OR (c.receiver_id = $1 AND c.sender_id = u.id)
+        )
+        WHERE c.status = 'accepted'
+        ORDER BY c.created_at DESC
+        "#,
+        current_user_id
+    )
+        .fetch_all(&state.pool)
+        .await {
+        Ok(connections) => connections,
+        Err(e) => {
+            eprintln!("Database error fetching connections: {}", e);
+            return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({
+                "error": "Failed to fetch connections"
+            })));
+        }
+    };
+
+    let connection_results: Vec<serde_json::Value> = connections.into_iter().map(|conn| {
         serde_json::json!({
-            "id": "55555555-5555-5555-5555-555555555555",
-            "user_id": "66666666-6666-6666-6666-666666666666",
-            "full_name": "Diana Prince",
-            "headline": "Engineering Manager",
-            "connected_at": "2024-01-10T14:20:00Z"
+            "id": conn.connection_id,
+            "user_id": conn.user_id,
+            "full_name": conn.full_name,
+            "email": conn.email,
+            "profile_picture_url": conn.profile_picture_url,
+            "connected_at": conn.connected_at
         })
-    ];
+    }).collect();
 
     (StatusCode::OK, Json(serde_json::json!({
-        "connections": mock_connections,
-        "count": mock_connections.len()
+        "connections": connection_results,
+        "count": connection_results.len()
     })))
 }
