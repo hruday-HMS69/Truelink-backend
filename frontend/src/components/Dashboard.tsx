@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import ProfileEditor from './ProfileEditor';
 import UserSearch from './UserSearch';
+import ConnectionRequests from './ConnectionRequests';
+import ConnectionsList from './ConnectionsList';
 
 interface User {
   id: string;
@@ -15,8 +17,17 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ user }) => {
-  const [showProfileEditor, setShowProfileEditor] = useState(false);
-  const [showUserSearch, setShowUserSearch] = useState(false);
+  const [activeTab, setActiveTab] = useState<'profile' | 'search' | 'requests' | 'connections' | null>(null);
+
+  const getTabButtonStyle = (tabName: string) => ({
+    background: activeTab === tabName ? '#6b7280' : '#2563eb',
+    color: 'white',
+    border: 'none',
+    padding: '12px 24px',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    fontSize: '1rem'
+  });
 
   return (
     <div style={{ 
@@ -26,7 +37,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
       background: '#f8fafc',
       minHeight: 'calc(100vh - 80px)'
     }}>
-      {/* Welcome Section */}
       <div style={{
         background: 'white',
         padding: '2rem',
@@ -46,107 +56,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
         </p>
       </div>
 
-      {/* Profile Completion Prompt */}
-      <div style={{
-        background: 'white',
-        padding: '1.5rem',
-        borderRadius: '8px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-        marginBottom: '2rem',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center'
-      }}>
-        <div>
-          <h3 style={{ margin: '0 0 0.5rem 0', color: '#374151' }}>Complete Your Profile</h3>
-          <p style={{ color: '#6b7280', margin: 0 }}>
-            Add professional information to improve your profile strength
-          </p>
-        </div>
-        <button 
-          onClick={() => setShowProfileEditor(!showProfileEditor)}
-          style={{
-            background: showProfileEditor ? '#6b7280' : '#2563eb',
-            color: 'white',
-            border: 'none',
-            padding: '0.75rem 1.5rem',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            fontSize: '1rem'
-          }}
-        >
-          {showProfileEditor ? 'Cancel Editing' : '✏️ Edit Profile'}
-        </button>
-      </div>
-
-      {/* Profile Editor */}
-      {showProfileEditor && <ProfileEditor />}
-
-      {/* User Search */}
-      {showUserSearch && <UserSearch />}
-
-      {/* Stats Cards */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-        gap: '1.5rem',
-        marginBottom: '2rem'
-      }}>
-        {/* Profile Strength */}
-        <div style={{
-          background: 'white',
-          padding: '1.5rem',
-          borderRadius: '8px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-          borderLeft: '4px solid #2563eb'
-        }}>
-          <h3 style={{ margin: '0 0 1rem 0', color: '#374151' }}>Profile Strength</h3>
-          <div style={{ 
-            background: '#e5e7eb',
-            borderRadius: '10px',
-            height: '8px',
-            marginBottom: '0.5rem'
-          }}>
-            <div style={{
-              background: '#2563eb',
-              borderRadius: '10px',
-              height: '100%',
-              width: '30%'
-            }}></div>
-          </div>
-          <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>30% complete</p>
-        </div>
-
-        {/* Network */}
-        <div style={{
-          background: 'white',
-          padding: '1.5rem',
-          borderRadius: '8px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-          borderLeft: '4px solid #10b981'
-        }}>
-          <h3 style={{ margin: '0 0 1rem 0', color: '#374151' }}>Your Network</h3>
-          <p style={{ fontSize: '2rem', fontWeight: 'bold', color: '#10b981', margin: 0 }}>0</p>
-          <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>connections</p>
-        </div>
-
-        {/* Verification */}
-        <div style={{
-          background: 'white',
-          padding: '1.5rem',
-          borderRadius: '8px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-          borderLeft: '4px solid #f59e0b'
-        }}>
-          <h3 style={{ margin: '0 0 1rem 0', color: '#374151' }}>Verification</h3>
-          <p style={{ fontSize: '1rem', color: '#f59e0b', margin: 0 }}>
-            {user.email_verified ? '✅ Email Verified' : '⚠️ Verify Email'}
-          </p>
-          <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>Identity status</p>
-        </div>
-      </div>
-
-      {/* Quick Actions */}
       <div style={{
         background: 'white',
         padding: '2rem',
@@ -154,79 +63,132 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
         boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
         marginBottom: '2rem'
       }}>
-        <h2 style={{ margin: '0 0 1.5rem 0', color: '#374151' }}>Quick Actions</h2>
+        <h2 style={{ margin: '0 0 1.5rem 0', color: '#374151' }}>Network Management</h2>
         <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
           <button 
-            onClick={() => setShowProfileEditor(!showProfileEditor)}
-            style={{
-              background: showProfileEditor ? '#6b7280' : '#2563eb',
-              color: 'white',
-              border: 'none',
-              padding: '12px 24px',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '1rem'
-            }}
+            onClick={() => setActiveTab(activeTab === 'profile' ? null : 'profile')}
+            style={getTabButtonStyle('profile')}
           >
-            {showProfileEditor ? 'Cancel Editing' : '✏️ Complete Profile'}
+            {activeTab === 'profile' ? 'Close Profile' : '✏️ Edit Profile'}
           </button>
           <button 
-            onClick={() => setShowUserSearch(!showUserSearch)}
-            style={{
-              background: showUserSearch ? '#6b7280' : '#10b981',
-              color: 'white',
-              border: 'none',
-              padding: '12px 24px',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '1rem'
-            }}
+            onClick={() => setActiveTab(activeTab === 'search' ? null : 'search')}
+            style={getTabButtonStyle('search')}
           >
-            {showUserSearch ? 'Hide Search' : '🔍 Find Connections'}
+            {activeTab === 'search' ? 'Close Search' : '🔍 Find Connections'}
           </button>
-          <button style={{
-            background: '#8b5cf6',
-            color: 'white',
-            border: 'none',
-            padding: '12px 24px',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            fontSize: '1rem'
-          }}>
-            📝 Create Post
+          <button 
+            onClick={() => setActiveTab(activeTab === 'requests' ? null : 'requests')}
+            style={getTabButtonStyle('requests')}
+          >
+            📩 Connection Requests
+          </button>
+          <button 
+            onClick={() => setActiveTab(activeTab === 'connections' ? null : 'connections')}
+            style={getTabButtonStyle('connections')}
+          >
+            👥 My Connections
           </button>
         </div>
       </div>
 
-      {/* Recent Activity */}
-      <div style={{
-        background: 'white',
-        padding: '2rem',
-        borderRadius: '8px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-      }}>
-        <h2 style={{ margin: '0 0 1.5rem 0', color: '#374151' }}>Recent Activity</h2>
-        <div style={{ 
-          padding: '2rem', 
-          textAlign: 'center',
-          color: '#6b7280',
-          border: '2px dashed #d1d5db',
-          borderRadius: '8px'
+      {activeTab === 'profile' && <ProfileEditor />}
+      {activeTab === 'search' && <UserSearch />}
+      {activeTab === 'requests' && <ConnectionRequests />}
+      {activeTab === 'connections' && <ConnectionsList />}
+
+      {!activeTab && (
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+          gap: '1.5rem',
+          marginBottom: '2rem'
         }}>
-          <p>No activity yet. Start connecting with professionals!</p>
-          <button style={{
-            background: 'transparent',
-            color: '#2563eb',
-            border: '1px solid #2563eb',
-            padding: '8px 16px',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            marginTop: '0.5rem'
+          <div style={{
+            background: 'white',
+            padding: '1.5rem',
+            borderRadius: '8px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+            borderLeft: '4px solid #2563eb'
           }}>
-            Explore Network
-          </button>
+            <h3 style={{ margin: '0 0 1rem 0', color: '#374151' }}>Profile Strength</h3>
+            <div style={{ 
+              background: '#e5e7eb',
+              borderRadius: '10px',
+              height: '8px',
+              marginBottom: '0.5rem'
+            }}>
+              <div style={{
+                background: '#2563eb',
+                borderRadius: '10px',
+                height: '100%',
+                width: '30%'
+              }}></div>
+            </div>
+            <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>30% complete</p>
+          </div>
+
+          <div style={{
+            background: 'white',
+            padding: '1.5rem',
+            borderRadius: '8px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+            borderLeft: '4px solid #10b981'
+          }}>
+            <h3 style={{ margin: '0 0 1rem 0', color: '#374151' }}>Your Network</h3>
+            <p style={{ fontSize: '2rem', fontWeight: 'bold', color: '#10b981', margin: 0 }}>0</p>
+            <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>connections</p>
+          </div>
+
+          <div style={{
+            background: 'white',
+            padding: '1.5rem',
+            borderRadius: '8px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+            borderLeft: '4px solid #f59e0b'
+          }}>
+            <h3 style={{ margin: '0 0 1rem 0', color: '#374151' }}>Verification</h3>
+            <p style={{ fontSize: '1rem', color: '#f59e0b', margin: 0 }}>
+              {user.email_verified ? '✅ Email Verified' : '⚠️ Verify Email'}
+            </p>
+            <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>Identity status</p>
+          </div>
         </div>
-      </div>
+      )}
+
+      {!activeTab && (
+        <div style={{
+          background: 'white',
+          padding: '2rem',
+          borderRadius: '8px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+        }}>
+          <h2 style={{ margin: '0 0 1.5rem 0', color: '#374151' }}>Recent Activity</h2>
+          <div style={{ 
+            padding: '2rem', 
+            textAlign: 'center',
+            color: '#6b7280',
+            border: '2px dashed #d1d5db',
+            borderRadius: '8px'
+          }}>
+            <p>No activity yet. Start connecting with professionals!</p>
+            <button 
+              onClick={() => setActiveTab('search')}
+              style={{
+                background: 'transparent',
+                color: '#2563eb',
+                border: '1px solid #2563eb',
+                padding: '0.5rem 1rem',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                marginTop: '0.5rem'
+              }}
+            >
+              Find Connections
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

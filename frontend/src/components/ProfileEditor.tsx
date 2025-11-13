@@ -20,12 +20,22 @@ const ProfileEditor: React.FC<ProfileEditorProps> = ({ onSave }) => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('token');
+    return token ? { 
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    } : { 'Content-Type': 'application/json' };
+  };
+
   useEffect(() => {
     let mounted = true;
     
     const loadProfile = async () => {
       try {
-        const response = await fetch('http://localhost:8080/api/profile/me');
+        const response = await fetch('http://localhost:8080/api/profile/me', {
+          headers: getAuthHeaders()
+        });
         if (response.ok && mounted) {
           const profileData: ProfileData = await response.json();
           setHeadline(profileData.headline || '');
@@ -62,9 +72,7 @@ const ProfileEditor: React.FC<ProfileEditorProps> = ({ onSave }) => {
 
       const response = await fetch('http://localhost:8080/api/profile/me', {
         method: 'PUT',
-        headers: { 
-          'Content-Type': 'application/json',
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify(profileData),
       });
 

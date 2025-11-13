@@ -3,11 +3,12 @@ pub mod profile;
 pub mod connections;
 
 use axum::{
-    routing::{get, post, put, delete},
+    routing::{get, post, put},
     Router,
 };
 use sqlx::PgPool;
 use crate::auth::service::AuthService;
+use crate::auth::middleware::auth_middleware;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -24,6 +25,7 @@ pub fn create_routes(state: AppState) -> Router {
         .nest("/api/profile", profile_routes())
         .nest("/api/connections", connection_routes())
         .with_state(state)
+        .layer(axum::middleware::from_fn(auth_middleware))
         .layer(
             tower_http::cors::CorsLayer::new()
                 .allow_origin(tower_http::cors::Any)

@@ -1,6 +1,6 @@
 use axum::{
     extract::{State, Path, Query},
-    http::StatusCode,
+    http::{StatusCode, HeaderMap},
     response::IntoResponse,
     Json,
 };
@@ -9,6 +9,7 @@ use uuid::Uuid;
 
 use crate::routes::AppState;
 use crate::models::{ConnectionRequest, UpdateConnectionRequest};
+use crate::auth::middleware::{get_user_id_from_headers, Claims};
 
 #[derive(Debug, Deserialize)]
 pub struct SearchQuery {
@@ -66,9 +67,17 @@ pub async fn search_users(
 
 pub async fn send_connection_request(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Json(payload): Json<ConnectionRequest>,
 ) -> impl IntoResponse {
-    let current_user_id = Uuid::parse_str("a390378b-51af-4dc7-aeb4-566f2ee429ef").unwrap();
+    let current_user_id = match get_user_id_from_headers(&headers) {
+        Some(user_id) => user_id,
+        None => {
+            return (StatusCode::UNAUTHORIZED, Json(serde_json::json!({
+                "error": "Authentication required"
+            })));
+        }
+    };
 
     println!("User {} wants to connect with {}", current_user_id, payload.receiver_id);
 
@@ -78,7 +87,7 @@ pub async fn send_connection_request(
         })));
     }
 
-    let receiver_exists = match sqlx::query!(
+    let _receiver_exists = match sqlx::query!(
         "SELECT id FROM users WHERE id = $1",
         payload.receiver_id
     )
@@ -97,12 +106,6 @@ pub async fn send_connection_request(
             })));
         }
     };
-
-    if !receiver_exists {
-        return (StatusCode::NOT_FOUND, Json(serde_json::json!({
-            "error": "Receiver not found"
-        })));
-    }
 
     match sqlx::query!(
         r#"
@@ -140,8 +143,16 @@ pub async fn send_connection_request(
 
 pub async fn get_pending_requests(
     State(state): State<AppState>,
+    headers: HeaderMap,
 ) -> impl IntoResponse {
-    let current_user_id = Uuid::parse_str("11111111-1111-1111-1111-111111111111").unwrap();
+    let current_user_id = match get_user_id_from_headers(&headers) {
+        Some(user_id) => user_id,
+        None => {
+            return (StatusCode::UNAUTHORIZED, Json(serde_json::json!({
+                "error": "Authentication required"
+            })));
+        }
+    };
 
     let requests = match sqlx::query!(
         r#"
@@ -157,7 +168,7 @@ pub async fn get_pending_requests(
         .await {
         Ok(requests) => requests,
         Err(e) => {
-            eprintln!("Database error fetching pending requests: {}", e);
+            eprintln!("Database error: {}", e);
             return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({
                 "error": "Failed to fetch connection requests"
             })));
@@ -181,20 +192,31 @@ pub async fn get_pending_requests(
 
 pub async fn update_connection_request(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Path(connection_id): Path<Uuid>,
     Json(payload): Json<UpdateConnectionRequest>,
 ) -> impl IntoResponse {
-    println!("Updating connection {} to status {:?}", connection_id, payload.status);
+    let current_user_id = match get_user_id_from_headers(&headers) {
+        Some(user_id) => user_id,
+        None => {
+            return (StatusCode::UNAUTHORIZED, Json(serde_json::json!({
+                "error": "Authentication required"
+            })));
+        }
+    };
+
+    println!("User {} updating connection {} to status: {:?}", current_user_id, connection_id, payload.status);
 
     match sqlx::query!(
         r#"
         UPDATE connections
         SET status = $1, updated_at = NOW()
-        WHERE id = $2
+        WHERE id = $2 AND receiver_id = $3
         RETURNING id
         "#,
         payload.status.to_string(),
-        connection_id
+        connection_id,
+        current_user_id
     )
         .fetch_optional(&state.pool)
         .await {
@@ -207,11 +229,11 @@ pub async fn update_connection_request(
         },
         Ok(None) => {
             (StatusCode::NOT_FOUND, Json(serde_json::json!({
-                "error": "Connection request not found"
+                "error": "Connection request not found or you don't have permission"
             })))
         },
         Err(e) => {
-            eprintln!("Database error updating request: {}", e);
+            eprintln!("Database error: {}", e);
             (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({
                 "error": "Failed to update connection request"
             })))
@@ -221,8 +243,16 @@ pub async fn update_connection_request(
 
 pub async fn get_connections(
     State(state): State<AppState>,
+    headers: HeaderMap,
 ) -> impl IntoResponse {
-    let current_user_id = Uuid::parse_str("11111111-1111-1111-1111-111111111111").unwrap();
+    let current_user_id = match get_user_id_from_headers(&headers) {
+        Some(user_id) => user_id,
+        None => {
+            return (StatusCode::UNAUTHORIZED, Json(serde_json::json!({
+                "error": "Authentication required"
+            })));
+        }
+    };
 
     let connections = match sqlx::query!(
         r#"
@@ -235,8 +265,8 @@ pub async fn get_connections(
             c.created_at as connected_at
         FROM connections c
         JOIN users u ON (
-            (c.sender_id = $1 AND c.receiver_id = u.id)
-            OR (c.receiver_id = $1 AND c.sender_id = u.id)
+            (c.sender_id = $1 AND c.receiver_id = u.id) OR
+            (c.receiver_id = $1 AND c.sender_id = u.id)
         )
         WHERE c.status = 'accepted'
         ORDER BY c.created_at DESC
@@ -247,7 +277,7 @@ pub async fn get_connections(
         .await {
         Ok(connections) => connections,
         Err(e) => {
-            eprintln!("Database error fetching connections: {}", e);
+            eprintln!("Database error: {}", e);
             return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({
                 "error": "Failed to fetch connections"
             })));
